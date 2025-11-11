@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>EV SOC — App</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f6fbf7;--card:#fff;--accent:#0b8a3e;--muted:#6b6f76;--danger:#c94242}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0b1730}
+.app{max-width:480px;margin:0 auto;padding:18px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{font-weight:700;font-size:18px}
+.small{color:var(--muted);font-size:13px}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-top:14px;box-shadow:0 6px 20px rgba(10,20,30,0.06)}
+.bignum{font-size:54px;font-weight:800;letter-spacing: -1px}
+.sub{font-size:14px;color:var(--muted)}
+.controls{display:flex;gap:10px;margin-top:12px}
+.btn{flex:1;padding:12px;border-radius:10px;border:0;font-weight:700;font-size:16px;background:var(--accent);color:#fff}
+.btn.secondary{background:transparent;border:1px solid #e6e9eb;color:#0b1730}
+.row{display:flex;gap:10px;align-items:center}
+.input{padding:10px;border-radius:10px;border:1px solid #eee;width:100%;font-size:16px}
+.footer{margin-top:18px;font-size:13px;color:var(--muted);text-align:center}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eaf7ee;color:var(--accent);font-weight:700}
+.green-border{box-shadow:0 0 0 6px rgba(11,138,62,0.08), inset 0 0 0 1px rgba(11,138,62,0.06)}
+.flex-center{display:flex;align-items:center;justify-content:center}
+.icon{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#eaf7ee;color:var(--accent);font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none}
+.header-right{display:flex;gap:8px;align-items:center}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="header">
+    <div>
+      <div class="title">EV SOC</div>
+      <div class="small">Quick charge tracker — capacity 80 kWh</div>
+    </div>
+    <div class="header-right">
+      <div id="statusBadge" class="badge">Idle</div>
+      <div id="installBtn" style="display:none" class="small">Install</div>
+    </div>
+  </div>
+
+  <div id="mainCard" class="card">
+    <div id="socDisplay" class="flex-center" style="flex-direction:column;gap:6px">
+      <div id="bigSOC" class="bignum">--%</div>
+      <div id="subInfo" class="sub">No data</div>
+    </div>
+
+    <div id="controls" style="margin-top:12px">
+      <div id="idleControls">
+        <div class="row">
+          <!-- SOC input hidden until user taps "Set current SOC" -->
+          <input id="lastSocInput" class="input" type="tel" inputmode="decimal" pattern="[0-9]*" enterkeyhint="done"
+                 style="display:none" min="0" max="100" placeholder="Set current SOC (%)">
+          <button id="saveLastSoc" class="btn secondary" style="display:none">Save</button>
+        </div>
+        <div class="controls" style="margin-top:12px">
+          <button id="startSession" class="btn">Start session</button>
+          <button id="revealSetSoc" class="btn secondary">Set current SOC</button>
+        </div>
+      </div>
+
+      <div id="sessionControls" style="display:none">
+        <div class="row">
+          <!-- kWh input hidden until user taps "Add kWh" -->
+          <input id="kwhInput" class="input" type="tel" inputmode="decimal" pattern="[0-9]*" enterkeyhint="done"
+                 style="display:none" min="0" step="0.1" placeholder="Total kWh added so far">
+          <button id="updateKwh" class="btn" style="display:none">Update</button>
+        </div>
+        <div class="controls" style="margin-top:12px">
+          <button id="showKwhInput" class="btn">Add kWh</button>
+          <button id="endSession" class="btn secondary">End session</button>
+          <button id="cancelSession" class="btn secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="small">
+      <div>Battery capacity: <strong>80 kWh</strong></div>
+      <div id="historySummary" style="margin-top:8px">No sessions yet</div>
+    </div>
+  </div>
+
+  <div class="footer small">Tip: open Monta, copy kWh added and paste into the app when charging.</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
