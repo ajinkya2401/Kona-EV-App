@@ -13,11 +13,11 @@
 :root{--bg:#f6fbf7;--card:#fff;--accent:#0b8a3e;--muted:#6b6f76;--danger:#c94242}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0b1730}
-.app{max-width:480px;margin:0 auto;padding:18px}
+.app{max-width:480px;margin:0 auto;padding:18px; height:100vh; display:flex; flex-direction:column; justify-content:flex-end; gap:12px;}
 .header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .title{font-weight:700;font-size:18px}
 .small{color:var(--muted);font-size:13px}
-.card{background:var(--card);border-radius:14px;padding:14px;margin-top:14px;box-shadow:0 6px 20px rgba(10,20,30,0.06)}
+.card{background:var(--card);border-radius:14px;padding:14px;margin:0 6px 12px;box-shadow:0 6px 20px rgba(10,20,30,0.06)}
 .bignum{font-size:54px;font-weight:800;letter-spacing: -1px}
 .sub{font-size:14px;color:var(--muted)}
 .controls{display:flex;gap:10px;margin-top:12px}
@@ -25,7 +25,7 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .btn.secondary{background:transparent;border:1px solid #e6e9eb;color:#0b1730}
 .row{display:flex;gap:10px;align-items:center}
 .input{padding:10px;border-radius:10px;border:1px solid #eee;width:100%;font-size:16px}
-.footer{margin-top:18px;font-size:13px;color:var(--muted);text-align:center}
+.footer{margin-top:6px;font-size:13px;color:var(--muted);text-align:center}
 .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eaf7ee;color:var(--accent);font-weight:700}
 .green-border{box-shadow:0 0 0 6px rgba(11,138,62,0.08), inset 0 0 0 1px rgba(11,138,62,0.06)}
 .flex-center{display:flex;align-items:center;justify-content:center}
@@ -33,11 +33,17 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
 .switch{display:inline-flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none}
 .header-right{display:flex;gap:8px;align-items:center}
+
+/* bottom controls bar (if you want the fixed bottom area, optional) */
+.bottom-actions{display:flex;gap:8px;margin:8px 6px 0}
+@media(min-width:700px){ .app{padding-left:40px;padding-right:40px} .bignum{font-size:64px} }
 </style>
 </head>
 <body>
 <div class="app" id="app">
-  <div class="header">
+
+  <!-- header can remain at top, but app area is bottom-aligned -->
+  <div class="header" style="margin-bottom:auto;">
     <div>
       <div class="title">Hyundai Kona EV</div>
       <div class="small">191D37789</div>
@@ -48,7 +54,8 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
     </div>
   </div>
 
-  <div id="mainCard" class="card">
+  <!-- main card sits near bottom because .app uses justify-content:flex-end -->
+  <div id="mainCard" class="card" role="region" aria-label="EV SOC">
     <div id="socDisplay" class="flex-center" style="flex-direction:column;gap:6px">
       <div id="bigSOC" class="bignum">--%</div>
       <div id="subInfo" class="sub">No data</div>
@@ -57,9 +64,8 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
     <div id="controls" style="margin-top:12px">
       <div id="idleControls">
         <div class="row">
-          <!-- SOC input hidden until user taps "Set current SOC" -->
-          <input id="lastSocInput" class="input" type="tel" inputmode="decimal" pattern="[0-9]*" enterkeyhint="done"
-                 style="display:none" min="0" max="100" placeholder="Set current SOC (%)">
+          <!-- SOC wheel picker (select) hidden until user taps "Set current SOC" -->
+          <select id="lastSocSelect" class="input" style="display:none" aria-label="Select current SOC"></select>
           <button id="saveLastSoc" class="btn secondary" style="display:none">Save</button>
         </div>
         <div class="controls" style="margin-top:12px">
@@ -89,10 +95,21 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
     </div>
   </div>
 
+  <!-- optional small hint just under card -->
   <div class="footer small">Tip: open Monta, copy kWh added and paste into the app when charging.</div>
+
+  <!-- bottom big thumb-friendly actions (optional duplicate controls) -->
+  <div class="bottom-actions" aria-hidden="true">
+    <!-- These mirror the main buttons so the user can use the big bottom controls if desired -->
+    <button id="startSessionBottom" class="btn" style="flex:1">Start</button>
+    <button id="revealSetSocBottom" class="btn secondary" style="flex:1">Set SOC</button>
+    <button id="showKwhInputBottom" class="btn" style="flex:1;display:none">Add kWh</button>
+    <button id="endSessionBottom" class="btn secondary" style="flex:1;display:none">End</button>
+  </div>
+
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="app.js"></script>
 </body>
