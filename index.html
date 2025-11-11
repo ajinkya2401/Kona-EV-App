@@ -12,31 +12,27 @@
 <style>
 :root{--bg:#f6fbf7;--card:#fff;--accent:#0b8a3e;--muted:#6b6f76;--danger:#c94242}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0b1730;-webkit-tap-highlight-color: transparent;}
-.app{max-width:480px;margin:0 auto;padding:18px 12px 90px} /* bottom padding for thumb controls */
-.header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:6px}
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0b1730}
+.app{max-width:480px;margin:0 auto;padding:18px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .title{font-weight:700;font-size:18px}
 .small{color:var(--muted);font-size:13px}
-.card{background:var(--card);border-radius:14px;padding:18px;margin-top:14px;box-shadow:0 6px 20px rgba(10,20,30,0.06)}
-.bignum{font-size:64px;font-weight:800;letter-spacing: -1px}
-.sub{font-size:14px;color:var(--muted);margin-top:6px;text-align:center}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-top:14px;box-shadow:0 6px 20px rgba(10,20,30,0.06)}
+.bignum{font-size:54px;font-weight:800;letter-spacing: -1px}
+.sub{font-size:14px;color:var(--muted)}
 .controls{display:flex;gap:10px;margin-top:12px}
-.btn{flex:1;padding:14px;border-radius:12px;border:0;font-weight:700;font-size:18px;background:var(--accent);color:#fff;min-width:88px}
+.btn{flex:1;padding:12px;border-radius:10px;border:0;font-weight:700;font-size:16px;background:var(--accent);color:#fff}
 .btn.secondary{background:transparent;border:1px solid #e6e9eb;color:#0b1730}
 .row{display:flex;gap:10px;align-items:center}
-.input{padding:12px;border-radius:10px;border:1px solid #eee;width:100%;font-size:18px}
-.footer{position:fixed;left:0;right:0;bottom:10px;padding:10px 12px;background:transparent;display:flex;justify-content:center;pointer-events:none}
-.bottomBar{max-width:680px;width:100%;display:flex;gap:8px;pointer-events:auto;padding:10px;background:rgba(255,255,255,0.95);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.08);align-items:center}
-.bigBtn{flex:1;padding:14px;border-radius:12px;border:0;font-weight:800;font-size:18px;background:var(--accent);color:#fff}
-.ghost{background:transparent;border:1px solid #e6e9eb;color:#0b1730}
+.input{padding:10px;border-radius:10px;border:1px solid #eee;width:100%;font-size:16px}
+.footer{margin-top:18px;font-size:13px;color:var(--muted);text-align:center}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eaf7ee;color:var(--accent);font-weight:700}
 .green-border{box-shadow:0 0 0 6px rgba(11,138,62,0.08), inset 0 0 0 1px rgba(11,138,62,0.06)}
 .flex-center{display:flex;align-items:center;justify-content:center}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:110px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none;z-index:50}
-.metaRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.carMeta{font-size:14px;color:#0b1730;font-weight:600}
-.reg{font-size:13px;color:var(--muted)}
-.smallHint{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
-@media(min-width:700px){ .app{padding-left:40px;padding-right:40px} .bignum{font-size:64px} }
+.icon{width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#eaf7ee;color:var(--accent);font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none}
+.header-right{display:flex;gap:8px;align-items:center}
 </style>
 </head>
 <body>
@@ -46,11 +42,9 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
       <div class="title">EV SOC</div>
       <div class="small">Quick charge tracker — capacity 80 kWh</div>
     </div>
-    <div class="metaRow" style="min-width:140px;justify-content:flex-end">
-      <div style="text-align:right">
-        <div id="carModel" class="carMeta">No car</div>
-        <div id="carReg" class="reg">----</div>
-      </div>
+    <div class="header-right">
+      <div id="statusBadge" class="badge">Idle</div>
+      <div id="installBtn" style="display:none" class="small">Install</div>
     </div>
   </div>
 
@@ -68,6 +62,10 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
                  style="display:none" min="0" max="100" placeholder="Set current SOC (%)">
           <button id="saveLastSoc" class="btn secondary" style="display:none">Save</button>
         </div>
+        <div class="controls" style="margin-top:12px">
+          <button id="startSession" class="btn">Start session</button>
+          <button id="revealSetSoc" class="btn secondary">Set current SOC</button>
+        </div>
       </div>
 
       <div id="sessionControls" style="display:none">
@@ -76,6 +74,11 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
           <input id="kwhInput" class="input" type="tel" inputmode="decimal" pattern="[0-9]*" enterkeyhint="done"
                  style="display:none" min="0" step="0.1" placeholder="Total kWh added so far">
           <button id="updateKwh" class="btn" style="display:none">Update</button>
+        </div>
+        <div class="controls" style="margin-top:12px">
+          <button id="showKwhInput" class="btn">Add kWh</button>
+          <button id="endSession" class="btn secondary">End session</button>
+          <button id="cancelSession" class="btn secondary">Cancel</button>
         </div>
       </div>
     </div>
@@ -86,17 +89,7 @@ html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Seg
     </div>
   </div>
 
-  <div class="smallHint">Tip: open Monta, copy kWh added and paste into the app when charging.</div>
-</div>
-
-<!-- bottom thumb-friendly controls -->
-<div class="footer" aria-hidden="false">
-  <div class="bottomBar" id="bottomBar">
-    <button id="startSession" class="bigBtn">Start session</button>
-    <button id="revealSetSoc" class="bigBtn ghost">Set current SOC</button>
-    <button id="showKwhInput" class="bigBtn ghost" style="display:none">Add kWh</button>
-    <button id="endSession" class="bigBtn ghost" style="display:none">End session</button>
-  </div>
+  <div class="footer small">Tip: open Monta, copy kWh added and paste into the app when charging.</div>
 </div>
 
 <div id="toast" class="toast"></div>

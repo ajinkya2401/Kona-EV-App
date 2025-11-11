@@ -1,4 +1,4 @@
-const CACHE_NAME = 'evpwa-v3';
+const CACHE_NAME = 'evpwa-v1';
 const FILES_TO_CACHE = ['.', 'index.html', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (evt) => {
