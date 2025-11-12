@@ -1,138 +1,247 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Hyundai Kona EV</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon-192.png">
-<style>
-:root{
-  --bg:#f6fbf7;--card:#fff;--accent:#0b8a3e;--muted:#6b6f76;--danger:#c94242;
-  --safeTop: calc(env(safe-area-inset-top) + 8px);
-}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;background:var(--bg);color:#0b1730}
-.app{
-  max-width:480px;margin:0 auto;padding:18px 18px 18px;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;position:relative;
-}
+// app.js - V3 layout final
+// Defensive wrapper & error reporting (top of file)
+(function(){
+  try {
+    window.addEventListener('error', function(e){
+      console.error('Uncaught error:', e.error || e.message || e);
+      try { alert('App error: ' + (e.error?.message || e.message || e)); } catch(_) {}
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      console.error('Unhandled rejection:', e.reason);
+      try { alert('Unhandled rejection: ' + (e.reason && e.reason.message ? e.reason.message : JSON.stringify(e.reason))); } catch(_) {}
+    });
+  } catch(e){}
+})();
+console.log('app.js loaded (defensive wrapper active)');
 
-/* centered car title right above big SOC */
-.header-centred{
-  text-align:center;
-  padding-top: var(--safeTop);
-  padding-bottom: 8px;
-}
-.car-title{font-weight:800;font-size:20px;color:#d93636;margin-bottom:6px}
-.car-reg{font-size:16px;color:#d93636;opacity:0.9;margin-bottom:8px}
+// STORAGE key
+const STORAGE = "evpwa_v3_final";
+const CAPACITY = 80;
 
-/* big floating SOC */
-.float-soc {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: calc(var(--safeTop) + 56px);
-  z-index: 2;
-  width: min(560px, calc(100% - 48px));
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  pointer-events:none;
-}
-.float-soc .bignum {
-  background: transparent;
-  padding: 4px 8px;
-  border-radius: 8px;
-  pointer-events: auto;
-  font-size:72px;
-  font-weight:800;
+function clamp(n,a,b){return Math.max(a,Math.min(b,n));}
+function saveState(state){localStorage.setItem(STORAGE, JSON.stringify(state));}
+function loadState(){try{return JSON.parse(localStorage.getItem(STORAGE))||{};}catch(e){return {}; }}
+
+// small toast helper
+function showToast(msg,timeout=1400){ const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', timeout); }
+
+// populate the SOC select (hidden by default but used for Set SOC)
+function populateSocSelect(){
+  const sel = document.getElementById('lastSocSelect');
+  if(!sel) return;
+  sel.innerHTML = '';
+  for(let i=0;i<=100;i++){
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = i + '%';
+    sel.appendChild(opt);
+  }
 }
 
-/* status label under SOC */
-.status-label { margin-top:12px; font-size:22px; font-weight:700; }
-
-/* card */
-.card{
-  background:var(--card);border-radius:14px;padding:18px;margin:0 6px 12px;box-shadow:0 6px 20px rgba(10,20,30,0.06);position:relative;z-index:1;
+// set big SOC text + dynamic color logic
+function setBigSocText(value){
+  const bigEl = document.getElementById('bigSOCFloat');
+  const statusEl = document.getElementById('subInfoFloat');
+  const vText = (value===null || value===undefined) ? '--%' : (value + '%');
+  if(bigEl) bigEl.textContent = vText;
+  // color rules: >=40 => green, <40 => yellow
+  let color = '#0b8a3e'; // green
+  if(value === null || value === undefined) color = '#0b1730';
+  else if(Number(value) < 40) color = '#e09c2f';
+  // apply
+  if(bigEl) bigEl.style.color = color;
+  if(statusEl){
+    // keep status color green (for Idle/Charging), but ensure contrast if SOC very low? keep green as requested
+    // status color will be set elsewhere to green when idle/charging; leave default here
+  }
 }
-.card .soc-space { height: 26px; } /* visual spacer */
 
-/* text */
-.sub{font-size:14px;color:var(--muted);text-align:center}
-.controls{display:flex;gap:10px;margin-top:12px}
-.btn{flex:1;padding:12px;border-radius:10px;border:0;font-weight:700;font-size:16px;background:var(--accent);color:#fff}
-.btn.secondary{background:transparent;border:1px solid #e6e9eb;color:#0b1730}
-.row{display:flex;gap:10px;align-items:center}
-.input{padding:10px;border-radius:10px;border:1px solid #eee;width:100%;font-size:16px}
-.footer{margin-top:6px;font-size:13px;color:var(--muted);text-align:center}
-.bottom-actions{display:flex;gap:12px;margin:8px 6px 10px;z-index:3}
-.bottom-actions .btn{flex:1;padding:14px;border-radius:12px;font-size:18px}
+// render UI from state
+function render(){
+  const s = loadState();
+  const hist = s.history || [];
+  // decide SOC shown
+  let socDisplayed = null;
+  let statusText = 'Idle';
+  if(s.session && typeof s.session.startSOC !== 'undefined'){
+    socDisplayed = clamp(Math.round(s.session.startSOC + ((s.session.kwhAdded||0)/CAPACITY)*100), 0, 100);
+    statusText = 'Charging';
+  } else if(typeof s.lastSoc === 'number'){
+    socDisplayed = s.lastSoc;
+    statusText = 'Idle';
+  }
+  // set big SOC and color
+  setBigSocText(socDisplayed);
 
-/* small helpers */
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.2);display:none}
-</style>
-</head>
-<body>
-<div class="app" id="app">
+  // set status label text and color (green)
+  const statusEl = document.getElementById('subInfoFloat');
+  if(statusEl){
+    statusEl.textContent = statusText;
+    statusEl.style.color = (statusText === 'Charging') ? '#0b8a3e' : '#0b8a3e';
+  }
 
-  <!-- Car title centered above the big SOC -->
-  <div class="header-centred" aria-hidden="true">
-    <div class="car-title">Hyundai KONA EV</div>
-    <div class="car-reg">191D37789</div>
-  </div>
+  // history text
+  const histEl = document.getElementById('historySummary');
+  if(histEl){
+    if(hist.length){
+      histEl.textContent = `Last: ${hist[0].startSOC}% → ${hist[0].endSOC}% (${hist[0].kwh} kWh)`;
+    } else {
+      histEl.textContent = 'No sessions yet';
+    }
+  }
 
-  <!-- floating battery percent (visually sits above the card) -->
-  <div class="float-soc" aria-hidden="true">
-    <div style="background:transparent;text-align:center;">
-      <div id="bigSOCFloat" class="bignum">--%</div>
-      <div id="subInfoFloat" class="status-label" style="color:var(--accent);">Idle</div>
-    </div>
-  </div>
+  // bottom button visibility
+  const startBtn = document.getElementById('startBtn');
+  const setSocBtn = document.getElementById('setSocBtn');
+  const addKwhBtn = document.getElementById('addKwhBtn');
+  const endBtn = document.getElementById('endBtn');
 
-  <!-- main card sits below the floating SOC -->
-  <div id="mainCard" class="card" role="region" aria-label="EV SOC">
-    <div class="soc-space"></div>
-    <div id="cardBody">
-      <!-- simplified card: removed in-card big SOC and removed battery capacity line -->
-      <div style="text-align:left; margin-top:6px">
-        <div id="historySummary" class="sub">No sessions yet</div>
-      </div>
+  if(s.session){
+    // charging: hide start/set, show add/end
+    if(startBtn) startBtn.style.display = 'none';
+    if(setSocBtn) setSocBtn.style.display = 'none';
+    if(addKwhBtn) addKwhBtn.style.display = '';
+    if(endBtn) endBtn.style.display = '';
+  } else {
+    // idle: show start/set, hide add/end
+    if(startBtn) startBtn.style.display = '';
+    if(setSocBtn) setSocBtn.style.display = '';
+    if(addKwhBtn) addKwhBtn.style.display = 'none';
+    if(endBtn) endBtn.style.display = 'none';
+  }
+}
 
-      <!-- hidden session controls (we only use bottom bar) -->
-      <div id="controls" style="margin-top:12px; display:none">
-        <div id="idleControls">
-          <div class="row">
-            <select id="lastSocSelect" class="input" style="display:none" aria-label="Select current SOC"></select>
-            <button id="saveLastSoc" class="btn secondary" style="display:none">Save</button>
-          </div>
-        </div>
-        <div id="sessionControls" style="display:none">
-          <div class="row">
-            <input id="kwhInput" class="input" type="tel" inputmode="decimal" pattern="[0-9]*" enterkeyhint="done" style="display:none" min="0" step="0.1" placeholder="Total kWh added so far">
-            <button id="updateKwh" class="btn" style="display:none">Update</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+// helper: show the hidden select for SOC, focus (shows iOS wheel)
+function revealSocPicker(){
+  const sel = document.getElementById('lastSocSelect');
+  const saveBtn = document.getElementById('saveLastSoc');
+  const s = loadState();
+  if(sel){
+    sel.value = (s.lastSoc !== undefined && s.lastSoc !== null) ? s.lastSoc : 50;
+    sel.style.display = '';
+    sel.focus();
+  }
+  if(saveBtn) saveBtn.style.display = '';
+}
 
-  <div class="footer small">Tip: open Monta, copy kWh added and paste into the app when charging.</div>
+// save selected SOC (from select)
+function saveSelectedSoc(){
+  const sel = document.getElementById('lastSocSelect');
+  if(!sel) return;
+  const v = Number(sel.value);
+  if(!Number.isFinite(v) || v < 0 || v > 100){ showToast('Enter 0–100'); return; }
+  const s = loadState();
+  s.lastSoc = Math.round(v);
+  saveState(s);
+  // hide select and save button
+  sel.style.display = 'none';
+  document.getElementById('saveLastSoc').style.display = 'none';
+  render();
+  showToast('Saved');
+}
 
-  <!-- bottom big thumb-friendly actions (only controls here) -->
-  <div class="bottom-actions" aria-hidden="false">
-    <button id="startBtn" class="btn">Start</button>
-    <button id="setSocBtn" class="btn secondary">Set SOC</button>
-    <button id="addKwhBtn" class="btn" style="display:none">Add kWh</button>
-    <button id="endBtn" class="btn secondary" style="display:none">End</button>
-  </div>
+// start a charging session using the last selected SOC
+function startSession(){
+  // we expect lastSoc or select to have the starting value
+  let startVal = null;
+  const sel = document.getElementById('lastSocSelect');
+  if(sel && sel.style.display !== 'none') startVal = Number(sel.value);
+  const s = loadState();
+  if(startVal === null || !Number.isFinite(startVal)){
+    // fallback to stored lastSoc
+    startVal = s.lastSoc;
+  }
+  if(!Number.isFinite(startVal)){ showToast('Set start SOC first'); return; }
+  s.session = { startSOC: Math.round(startVal), kwhAdded: 0, tsStart: Date.now() };
+  delete s.lastSoc;
+  saveState(s);
+  render();
+  showToast('Session started');
+}
 
-</div>
+// reveal Add kWh input (we'll show the in-card input)
+function revealAddKwh(){
+  const input = document.getElementById('kwhInput');
+  const upd = document.getElementById('updateKwh');
+  const s = loadState();
+  if(s.session && typeof s.session.kwhAdded !== 'undefined') input.value = s.session.kwhAdded;
+  input.style.display = '';
+  upd.style.display = '';
+  input.focus();
+}
 
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
+// update kWh value
+function updateKwh(){
+  const input = document.getElementById('kwhInput');
+  const v = Number(input.value);
+  if(!Number.isFinite(v) || v < 0){ showToast('Enter valid kWh'); return; }
+  const s = loadState();
+  if(!s.session){ showToast('No active session'); return; }
+  s.session.kwhAdded = Number(v.toFixed(2));
+  s.session.tsUpdate = Date.now();
+  saveState(s);
+  render();
+  input.style.display = 'none';
+  document.getElementById('updateKwh').style.display = 'none';
+  showToast('Updated');
+}
 
-<script src="app.js"></script>
-</body>
-</html>
+// end session: compute end SOC and push to history
+function endSession(){
+  const s = loadState();
+  if(!s.session){ showToast('No active session'); return; }
+  const endSOC = clamp(Math.round(s.session.startSOC + ((s.session.kwhAdded||0)/CAPACITY)*100),0,100);
+  s.history = s.history || [];
+  s.history.unshift({ startSOC: s.session.startSOC, kwh: s.session.kwhAdded||0, endSOC, ts: Date.now() });
+  s.lastSoc = endSOC;
+  delete s.session;
+  saveState(s);
+  render();
+  showToast('Session ended');
+}
+
+// cancel session (not exposed in bottom bar but kept)
+function cancelSession(){
+  const s = loadState();
+  if(s.session){ delete s.session; saveState(s); render(); showToast('Cancelled'); }
+}
+
+// wire bottom buttons (single source of truth)
+function wireButtons(){
+  document.getElementById('startBtn')?.addEventListener('click', ()=> {
+    // ensure select exist and has a value; if hidden, reveal first to pick
+    const s = loadState();
+    if(typeof s.lastSoc === 'number'){
+      // start directly
+      startSession();
+    } else {
+      // reveal selector so user can pick then press Start again
+      revealSocPicker();
+      showToast('Pick start SOC then press Start');
+    }
+  });
+
+  document.getElementById('setSocBtn')?.addEventListener('click', ()=> {
+    revealSocPicker();
+  });
+
+  document.getElementById('addKwhBtn')?.addEventListener('click', ()=> {
+    revealAddKwh();
+  });
+
+  document.getElementById('endBtn')?.addEventListener('click', ()=> {
+    endSession();
+  });
+
+  // in-card save / update buttons (hidden by default) — keep them wired
+  document.getElementById('saveLastSoc')?.addEventListener('click', saveSelectedSoc);
+  document.getElementById('updateKwh')?.addEventListener('click', updateKwh);
+}
+
+// initialize UI
+(function init(){
+  populateSocSelect();
+  wireButtons();
+  render();
+  console.log('app.js initialized');
+})();
